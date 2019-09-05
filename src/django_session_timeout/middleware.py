@@ -26,7 +26,7 @@ class SessionTimeoutMiddleware(MiddlewareMixin):
         session_is_expired = time.time() - init_time > expire_seconds
 
         if session_is_expired:
-            request.session.flush()
+            logout(request)
             return redirect_to_login(next=request.path)
 
         expire_since_last_activity = getattr(
