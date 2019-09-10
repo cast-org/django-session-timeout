@@ -2,7 +2,9 @@ import time
 
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
-from django.contrib.auth import logout
+
+from .shared import SESSION_TIMEOUT_KEY, SESSION_USER_KEY
+from .signals import user_timed_out
 
 try:
     from django.utils.deprecation import MiddlewareMixin
@@ -10,14 +12,20 @@ except ImportError:
     MiddlewareMixin = object
 
 
-SESSION_TIMEOUT_KEY = "_session_init_timestamp_"
-
-
 class SessionTimeoutMiddleware(MiddlewareMixin):
     def process_request(self, request):
         if not hasattr(request, "session") or request.session.is_empty():
             return
 
+        sess = request.session
+
+        # Set user if there is one for this session and not already set
+        user = getattr(request, 'user', None)
+        if not sess.get(SESSION_USER_KEY, None):
+            if (user and getattr(user, 'is_authenticated', True)):
+                sess[SESSION_USER_KEY] = user.pk
+
+        # Set session start time if not already set.
         init_time = request.session.setdefault(SESSION_TIMEOUT_KEY, time.time())
 
         expire_seconds = getattr(
@@ -27,7 +35,11 @@ class SessionTimeoutMiddleware(MiddlewareMixin):
         session_is_expired = time.time() - init_time > expire_seconds
 
         if session_is_expired:
-            logout(request)
+            user_timed_out.send(sender=self.__class__, user=user, session=sess)
+            request.session.flush()
+            if hasattr(request, 'user'):
+                from django.contrib.auth.models import AnonymousUser
+                request.user = AnonymousUser()
             return redirect_to_login(next=request.path)
 
         expire_since_last_activity = getattr(

@@ -22,7 +22,7 @@
 django-session-timeout
 ======================
 
-Add timestamp to sessions to expire them independently
+Add timestamp to sessions to expire them after a given period of inactivity.
 
 Installation
 ============
@@ -46,8 +46,19 @@ Update your settings to add the SessionTimeoutMiddleware:
         # ...
     ]
 
+To enable the 'expiresessions' admin command, also add this to INSTALLED_APPS:
 
-And also add the ``SESSION_EXPIRE_SECONDS``:
+.. code-block:: python
+	INSTALLED_APPS = [
+        # ...
+	    'django_session_timeout.apps.SessionTimeoutConfig',
+        # ...
+	]
+
+
+``SESSION_EXPIRE_AT_BROWSER_CLOSE`` should be set to True, so that sessions are closed when the user closes their browser.
+
+Also add ``SESSION_EXPIRE_SECONDS`` to define when sessions should expire after going idle:
 
 
 .. code-block:: python
@@ -63,9 +74,10 @@ To expire the session X seconds after the `last activity`, use the following set
     SESSION_EXPIRE_AFTER_LAST_ACTIVITY = True
 
 
-By default, `last activiy` will be grouped per second.
-To group by different period use the following setting:
+By default, `last activity` will be updated on every request.
+You can avoid some overhead, at the cost of some precision in expiry time, by only updating it if some time has passed
+since the last update.  To so so, set a grace period as with this setting:
 
 .. code-block:: python
 
-    SESSION_EXPIRE_AFTER_LAST_ACTIVITY_GRACE_PERIOD = 60 # group by minute
+    SESSION_EXPIRE_AFTER_LAST_ACTIVITY_GRACE_PERIOD = 60 # update at most once per minute
