@@ -1,10 +1,16 @@
+import logging
 import time
 
 from django.conf import settings
 from django.contrib.auth.views import redirect_to_login
+from django.urls import reverse
 
 from .shared import SESSION_TIMEOUT_KEY, SESSION_USER_KEY
 from .signals import user_timed_out
+
+logger = logging.getLogger(__name__)
+
+STATUS_URL = reverse('status')
 
 try:
     from django.utils.deprecation import MiddlewareMixin
@@ -17,12 +23,16 @@ class SessionTimeoutMiddleware(MiddlewareMixin):
         if not hasattr(request, "session") or request.session.is_empty():
             return
 
+        # Requests for session status are special; they don't update the last-activity time.
+        if request.path == STATUS_URL:
+            return
+
         sess = request.session
 
         # Set user if there is one for this session and not already set
         user = getattr(request, 'user', None)
         if not sess.get(SESSION_USER_KEY, None):
-            if (user and getattr(user, 'is_authenticated', True)):
+            if user and getattr(user, 'is_authenticated', True):
                 sess[SESSION_USER_KEY] = user.pk
 
         # Set session start time if not already set.

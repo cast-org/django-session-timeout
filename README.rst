@@ -49,11 +49,12 @@ Update your settings to add the SessionTimeoutMiddleware:
 To enable the 'expiresessions' admin command, also add this to INSTALLED_APPS:
 
 .. code-block:: python
-	INSTALLED_APPS = [
+
+    INSTALLED_APPS = [
         # ...
-	    'django_session_timeout.apps.SessionTimeoutConfig',
+        'django_session_timeout.apps.SessionTimeoutConfig',
         # ...
-	]
+    ]
 
 
 ``SESSION_EXPIRE_AT_BROWSER_CLOSE`` should be set to True, so that sessions are closed when the user closes their browser.
@@ -81,3 +82,19 @@ since the last update.  To so so, set a grace period as with this setting:
 .. code-block:: python
 
     SESSION_EXPIRE_AFTER_LAST_ACTIVITY_GRACE_PERIOD = 60 # update at most once per minute
+
+If you want to implement a friendly warning to users before their
+session is forcibly timed out, you can define limits for when
+such a warning should show up, and when the user should be logged
+out if they do not respond to it.  Add these variables to your settings:
+
+.. code-block:: python
+
+    SESSION_IDLE_SECONDS = 600     # Show warning after 10 minutes
+    SESSION_TIMEOUT_SECONDS = 1200 # After 10 more minutes, user will be logged off
+
+This middleware does not implement the warning, but does
+provide a couple of useful endpoints that you might need:
+a "status" view that returns information abot the current session,
+without itself being counted as activity that should reset the
+idle time; and a "keepalive" URL that marks the session as active again.
